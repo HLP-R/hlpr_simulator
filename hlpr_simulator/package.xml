@@ -1,0 +1,23 @@
+<package>
+  <name>hlpr_simulator</name>
+  <version>1.0.0</version>
+  <description>Metapackage for the ROS Packages for simulation with HLP-R common platform (Stanley Vector)</description>
+
+  <author email="vchu@gatech.edu">Vivian Chu</author>
+  <maintainer email="vchu@gatech.edu">Vivian Chu</maintainer>
+  
+  <url type="website">https://github.com/HLP-R/hlpr_simulator/wiki</url>
+  <url type="bugtracker">https://github.com/HLP-R/hlpr_simulator/issues</url>
+  <url type="repository">https://github.com/HLP-R/hlpr_simulator</url>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>hlpr_gazebo</run_depend>
+  <run_depend>vector_description</run_depend>
+  
+  <export>
+    <metapackage />
+  </export>
+</package>

@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+
+    <!-- Spawns a simple box with a red lid -->  
+    <node name="spawn_bb" pkg="gazebo_ros" type="spawn_model" args="-urdf -file $(find hlpr_gazebo)/objects/bean_box.urdf -model box   -x 2.2 -y 1.6 -z 0.99 " respawn="false" output="screen" />
+
+</launch>
+
+

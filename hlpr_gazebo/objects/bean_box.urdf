@@ -1,0 +1,90 @@
+<?xml version="1.0" ?>
+<robot name="bean_box">
+  <link
+    name="box_base">
+    <inertial>
+      <origin
+        xyz="0.0 0.0 0.06"
+        rpy="0 0 0" />
+      <mass
+        value="1.0" />
+      <inertia
+        ixx="0.0016"
+        ixy="0"
+        ixz="0"
+        iyy="0.0016"
+        iyz="0"
+        izz="0.0016" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="-0.01 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://hlpr_gazebo/objects/meshes/bbm.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin
+        xyz="-0.01 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://hlpr_gazebo/objects/meshes/bbm.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="box_lid">
+    <inertial>
+      <origin
+        xyz="0.0 -0.045 -0.001"
+        rpy="0 0 0" />
+      <mass
+        value="0.01" />
+      <inertia
+        ixx="0.000008"
+        ixy="0"
+        ixz="0"
+        iyy="0.000008"
+        iyz="0"
+        izz="0.000008" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="-0.01 -0.045 -0.011"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://hlpr_gazebo/objects/meshes/bbt.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin
+        xyz="-0.01 -0.045 -0.011"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://hlpr_gazebo/objects/meshes/bbt.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <gazebo reference="box_lid">
+    <material>Gazebo/Red</material>
+  </gazebo>
+  <joint
+    name="box_hinge"
+    type="revolute">
+    <origin
+      xyz="0.0 0.045 0.151"
+      rpy="0 0 0" />
+    <parent
+      link="box_base" />
+    <child
+      link="box_lid" />
+    <axis xyz="1 0 0" />
+    <limit effort="30" velocity="1.0" lower="-1.575" upper="0.0" />
+    <dynamics damping="0.05" friction="0.02"/>
+  </joint>
+</robot>

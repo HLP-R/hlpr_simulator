@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<robot name="counter">
+  <link
+    name="kitchen_counter">
+    <inertial>
+      <origin
+        xyz="0 0 0.44"
+        rpy="0 0 0" />
+      <mass
+        value="100" />
+      <inertia
+        ixx="40"
+        ixy="0"
+        ixz="0"
+        iyy="11"
+        iyz="0"
+        izz="37" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://hlpr_gazebo/objects/meshes/kitchen_counter_orig0.stl" />
+      </geometry>
+      <!--material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material-->
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://hlpr_gazebo/objects/meshes/kitchen_counter_orig0.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <gazebo>
+    <static>true</static>
+  </gazebo>
+  <gazebo reference="kitchen_counter">
+    <material>Gazebo/WoodPallet</material>
+  </gazebo>
+</robot>

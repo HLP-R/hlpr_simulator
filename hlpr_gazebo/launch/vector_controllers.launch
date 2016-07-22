@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Launch file that loads all of the controllers for gazebo -->
+
+    <!-- moveit_launch: do we launch moveit. wpi_jaco_launch: do we launch wpi_jaco_wrapper warm. use_wpi_jaco_exec - does moveit use wpi_jaco to send commands.
+     WARNING: if you set use_wpi_jaco_exec false and moveit launch true - you cannot execute a trajectory through moveit. If you set use_wpi_jaco_exec to true and wpi_jaco_launch to false, arm teleop will be disabled in simulation and moveit will hang when loading.--> 
+    <arg name="moveit_launch" default="true" />
+    <arg name="wpi_jaco_launch" default="true"/>
+    <arg name="use_wpi_jaco_exec" default="true"/>
+
+    <!-- Load moveit and wpi_jaco arm wrappers -->
+    <group if="$(arg moveit_launch)">
+        <include file="$(find vector_wpi_jaco_moveit_config)/launch/vector_wpi_jaco_simple_moveit_sim.launch">
+            <arg name="wpi_jaco_launch" value="$(arg wpi_jaco_launch)"/>
+        </include>
+    </group>
+
+    <!-- Interface node for converting vector commands to gazebo commands -->
+    <node name="vector2gazebo" pkg="hlpr_gazebo" type="vector_control_interface.py" output="screen" />
+
+    <!-- Arms: Currently only supports position control  -->
+    <rosparam file="$(find hlpr_gazebo)/controller/arm_controller_jaco.yaml" command="load" if="$(optenv VECTOR_HAS_KINOVA_ARM false)"/>
+    <node name="arm_controller_spawner" pkg="controller_manager" type="spawner" output="screen" args="vector/right_arm --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_KINOVA_ARM false)"/>
+
+    <!-- Setup initial simulation positions -->
+    <node name="r_sim_setup" pkg="hlpr_gazebo" type="body_part_setup.py" output="screen"
+            args="vector/right_arm">
+        <!--param name="init_position" value="0, 3.14, 3.14, 0, 0, 0"/ ZERO CONFIG (straight out)-->
+        <param name="init_position" value="-1.92, 1.50, 0.53, -2.50, -2.91, 0.72"/>
+    </node>
+
+    <!-- Gripper -->
+    <rosparam file="$(find hlpr_gazebo)/controller/gripper_controller_robotiq.yaml" command="load" if="$(optenv VECTOR_HAS_ROBOTIQ_GRIPPER false)" />
+    <node name="gripper_controller_spawner" pkg="controller_manager" type="spawner" args="gripper_controller --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_ROBOTIQ_GRIPPER false)"/>
+
+    <!-- Pan Tilt -->
+    <rosparam file="$(find hlpr_gazebo)/controller/pan_tilt_controller.yaml" command="load" if="$(optenv VECTOR_HAS_KINECT_PAN_TILT false)"/>  
+    <node name="pan_controller_spawner" pkg="controller_manager" type="spawner" args="pan_sim_controller --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_KINECT_PAN_TILT false)"/>
+    <node name="tilt_controller_spawner" pkg="controller_manager" type="spawner" args="tilt_sim_controller --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_KINECT_PAN_TILT false)"/>
+
+    <!-- Linear Actuator -->
+    <rosparam file="$(find hlpr_gazebo)/controller/linear_actuator_controller.yaml" command="load"/>  
+    <node name="linear_actuator_controller_spawner" pkg="controller_manager" type="spawner" args="linear_actuator_controller --shutdown-timeout 0.5"/>
+
+    <!-- Setup initial simulation positions -->
+    <node name="lin_sim_setup" pkg="hlpr_gazebo" type="body_part_setup.py" output="screen"
+            args="linear_actuator_controller 0.55"/>
+
+</launch>
