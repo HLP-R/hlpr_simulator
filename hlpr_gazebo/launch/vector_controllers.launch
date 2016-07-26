@@ -10,7 +10,7 @@
 
     <!-- Load moveit and wpi_jaco arm wrappers -->
     <group if="$(arg moveit_launch)">
-        <include file="$(find vector_wpi_jaco_moveit_config)/launch/vector_wpi_jaco_simple_moveit_sim.launch">
+        <include file="$(find vector_wpi_jaco_moveit_config)/launch/vector_wpi_jaco_simple_moveit.launch">
             <arg name="wpi_jaco_launch" value="$(arg wpi_jaco_launch)"/>
         </include>
     </group>
