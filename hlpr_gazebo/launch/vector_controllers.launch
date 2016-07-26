@@ -4,9 +4,9 @@
 
     <!-- moveit_launch: do we launch moveit. wpi_jaco_launch: do we launch wpi_jaco_wrapper warm. use_wpi_jaco_exec - does moveit use wpi_jaco to send commands.
      WARNING: if you set use_wpi_jaco_exec false and moveit launch true - you cannot execute a trajectory through moveit. If you set use_wpi_jaco_exec to true and wpi_jaco_launch to false, arm teleop will be disabled in simulation and moveit will hang when loading.--> 
-    <arg name="moveit_launch" default="true" />
-    <arg name="wpi_jaco_launch" default="true"/>
-    <arg name="use_wpi_jaco_exec" default="true"/>
+    <arg name="moveit_launch" default="false" />
+    <arg name="wpi_jaco_launch" default="false"/>
+    <arg name="use_wpi_jaco_exec" default="false"/>
 
     <!-- Load moveit and wpi_jaco arm wrappers -->
     <group if="$(arg moveit_launch)">
