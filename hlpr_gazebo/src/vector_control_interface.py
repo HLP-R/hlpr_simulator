@@ -190,10 +190,18 @@ class VectorControllerConverter():
         # Send the command
         self.gripper_pub.publish(jtm) 
 
+    def isCommandAllZero(self, msg):
+        return (msg.x + msg.y + msg.z + 
+                msg.theta_x + msg.theta_y + msg.theta_z) == 0
+
     def EEFCallback(self, msg):
 
         # Check if we have EEF positions yet
         if self.trans == None or self.rot == None:
+            return
+
+        # Check if the command is just zero - if so do nothing
+        if self.isCommandAllZero(msg):
             return
 
         # Determine current position of EEF
