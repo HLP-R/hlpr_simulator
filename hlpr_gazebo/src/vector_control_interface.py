@@ -39,7 +39,6 @@ into standard ROS messages for Gazebo to interpret
 Note: it currently depends on MoveIt! to perform arm manipulation using the joystick
 """
 
-import roslib; roslib.load_manifest('hlpr_gazebo')
 import rospy
 import tf
 import math
@@ -183,9 +182,16 @@ class VectorControllerConverter():
 
     def gripperCallback(self, msg):
 
+        # Fully closed = 0
+        # Fully open = 0.085
+        # The joint is interval is inverted in that 0 joint position = 0.085 gripper
+        # Joint maximum is 0.8
+        grip_max_width = 0.085
+        grip_joint_max = 0.8
+        grip_joint_pos = ((grip_max_width - msg.position)/grip_max_width) * grip_joint_max
+
         # Send the position command for now (does not do force)
-        # Scale the command by 10 - 0.08 gripper width = 0.8 joint position
-        jtm = self.jointTrajHelper(self.gripper_name, msg.position*10.0)
+        jtm = self.jointTrajHelper(self.gripper_name, grip_joint_pos)
        
         # Send the command
         self.gripper_pub.publish(jtm) 
