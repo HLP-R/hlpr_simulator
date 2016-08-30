@@ -74,6 +74,7 @@ before_install:
   # Prepare rosdep to install dependencies.
   - sudo rosdep init
   - rosdep update
+  - sudo apt-get install -y libeigen3-dev
   # Specific for freenect2
   - git clone https://github.com/OpenKinect/libfreenect2.git
   - sudo apt-get install build-essential cmake pkg-config
@@ -104,7 +105,6 @@ install:
 # wstool looks for a ROSINSTALL_FILE defined in the environment variables.
 before_script:
   # source dependencies: install using wstool.
-  - sudo apt-get install -y libeigen3-dev
   - cd ~/catkin_ws/src
   - git clone -b fix_rosdep https://github.com/StanleyInnovation/vector_v1.git # change later
   - wstool init
