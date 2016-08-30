@@ -104,6 +104,7 @@ install:
 # wstool looks for a ROSINSTALL_FILE defined in the environment variables.
 before_script:
   # source dependencies: install using wstool.
+  - sudo apt-get install -y libeigen3-dev
   - cd ~/catkin_ws/src
   - git clone -b fix_rosdep https://github.com/StanleyInnovation/vector_v1.git # change later
   - wstool init
