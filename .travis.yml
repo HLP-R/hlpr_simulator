@@ -105,6 +105,7 @@ install:
 # wstool looks for a ROSINSTALL_FILE defined in the environment variables.
 before_script:
   # source dependencies: install using wstool.
+  - export INCLUDES="-I/usr/include/eigen3
   - cd ~/catkin_ws/src
   - git clone -b fix_rosdep https://github.com/StanleyInnovation/vector_v1.git # change later
   - wstool init
