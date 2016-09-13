@@ -43,7 +43,7 @@ import rospy
 import tf
 import math
 from collections import defaultdict
-from vector_msgs.msg import LinearActuatorCmd, GripperCmd, JacoCartesianVelocityCmd
+from vector_msgs.msg import LinearActuatorCmd, GripperCmd, JacoCartesianVelocityCmd, GripperStat
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from control_msgs.msg import JointTrajectoryControllerState
 from sensor_msgs.msg import JointState
@@ -83,6 +83,9 @@ class VectorControllerConverter():
         self.pan_names = get_param('/pan_sim_controller/joints', '')          
         self.tilt_names = get_param('/tilt_sim_controller/joints', '')          
 
+        # Get flag for one vs. two arms
+        self.two_arms = get_param('/two_arms', False)
+
         # Setup pan/tilt sim to real controller topics to simulate the real robot
         # Needed because ROS controller has a different message than Stanley
         self.pan_state_sub = rospy.Subscriber('/pan_sim_controller/state', JointTrajectoryControllerState, self.panStateCallback, queue_size=1)
@@ -102,6 +105,13 @@ class VectorControllerConverter():
         self.pan_sub = rospy.Subscriber('/pan_controller/command', Float64, self.panCallback, queue_size=1)
         self.tilt_sub = rospy.Subscriber('/tilt_controller/command', Float64, self.tiltCallback, queue_size=1)
         self.gripper_sub = rospy.Subscriber('/vector/right_gripper/cmd', GripperCmd, self.gripperCallback, queue_size=1)
+
+        # Setup some topics that mimic the real robot state topics
+        self.lin_state_sub = rospy.Subscriber('/linear_actuator_controller/state', JointTrajectoryControllerState, self.linStateCallback, queue_size=1)
+        self.lin_state_pub = rospy.Publisher('/vector/joint_states', JointState, queue_size=1)
+        self.gripper_state_sub = rospy.Subscriber('/gripper_controller/state', JointTrajectoryControllerState, self.gripperStateCallback, queue_size=1)
+        self.gripper_joint_state_pub = rospy.Publisher('/vector/right_gripper/joint_states', JointState, queue_size=1)
+        self.gripper_stat_pub = rospy.Publisher('/vector/right_gripper/stat', GripperStat, queue_size=1)
 
         # Initialize necessary components for TF
         self.listener = tf.TransformListener()
@@ -171,14 +181,43 @@ class VectorControllerConverter():
         sim_data_msg.current_pos = msg.actual.positions[0]
         sim_data_msg.error = msg.error.positions[0]
         sim_data_msg.velocity = msg.actual.velocities[0]
-        
         return sim_data_msg
+
+    def convertJointTrajectorySensorMsg(self, msg):
+
+        # Generate fake JointState msg
+        sim_data_msg = JointState()
+        sim_data_msg.header = msg.header
+        sim_data_msg.name = msg.joint_names
+        sim_data_msg.position = msg.actual.positions
+        sim_data_msg.velocity = msg.actual.velocities
+        sim_data_msg.effort = msg.actual.effort
+        return sim_data_msg
+
+    def convertJointTrajectoryGripperStat(self, msg):
+        
+        sim_data_msg = GripperStat()
+        sim_data_msg.header = msg.header
+        sim_data_msg.position = msg.actual.positions[0]
+        sim_data_msg.requested_position = msg.desired.positions[0]
+        return sim_data_msg
+        
+    def gripperStateCallback(self, msg):
+        
+        # Publish the joint state message
+        self.gripper_joint_state_pub.publish(self.convertJointTrajectorySensorMsg(msg)) 
+
+        # Publish the gripper stat message
+        self.gripper_stat_pub.publish(self.convertJointTrajectoryGripperStat(msg))
 
     def panStateCallback(self, msg):
         self.pan_state_pub.publish(self.convertJointTrajectoryControllerState(msg)) 
 
     def tiltStateCallback(self, msg):
         self.tilt_state_pub.publish(self.convertJointTrajectoryControllerState(msg)) 
+
+    def linStateCallback(self, msg):
+        self.lin_state_pub.publish(self.convertJointTrajectorySensorMsg(msg))
 
     def gripperCallback(self, msg):
 

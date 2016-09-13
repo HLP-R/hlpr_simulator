@@ -16,7 +16,9 @@
     </group>
 
     <!-- Interface node for converting vector commands to gazebo commands -->
-    <node name="vector2gazebo" pkg="hlpr_gazebo" type="vector_control_interface.py" output="screen" unless="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)" />
+    <node name="vector2gazebo" pkg="hlpr_gazebo" type="vector_control_interface.py" output="screen" unless="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)" >
+        <param name="two_arms" value="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS)" />
+    </node>
     <node name="vector2gazebo" pkg="hlpr_gazebo" type="vector_control_interface_two_arms.py" output="screen" if="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)" />
 
 
