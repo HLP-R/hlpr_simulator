@@ -73,6 +73,8 @@ class VectorControllerConverter():
 
         rospy.loginfo("Setting up subscribers and publishers")
 
+        self.RIGHT_KEY = 'right'
+
         # Specific for the linear actuator
         self.linact_pub = rospy.Publisher('/linear_actuator_controller/command', JointTrajectory, queue_size=10) 
         self.linact_joint_names = get_param('/linear_actuator_controller/joints', '')          
@@ -104,12 +106,12 @@ class VectorControllerConverter():
         self.linact_command_sub = rospy.Subscriber('/vector/linear_actuator_cmd', LinearActuatorCmd, self.linactCallback, queue_size=10)  
         self.pan_sub = rospy.Subscriber('/pan_controller/command', Float64, self.panCallback, queue_size=1)
         self.tilt_sub = rospy.Subscriber('/tilt_controller/command', Float64, self.tiltCallback, queue_size=1)
-        self.gripper_sub = rospy.Subscriber('/vector/right_gripper/cmd', GripperCmd, self.gripperCallback, queue_size=1)
+        self.gripper_sub = rospy.Subscriber('/vector/right_gripper/cmd', GripperCmd, self.gripperCallback, (self.RIGHT_KEY), queue_size=1)
 
         # Setup some topics that mimic the real robot state topics
         self.lin_state_sub = rospy.Subscriber('/linear_actuator_controller/state', JointTrajectoryControllerState, self.linStateCallback, queue_size=1)
         self.lin_state_pub = rospy.Publisher('/vector/joint_states', JointState, queue_size=1)
-        self.gripper_state_sub = rospy.Subscriber('/gripper_controller/state', JointTrajectoryControllerState, self.gripperStateCallback, queue_size=1)
+        self.gripper_state_sub = rospy.Subscriber('/gripper_controller/state', JointTrajectoryControllerState, self.gripperStateCallback, (self.RIGHT_KEY), queue_size=1)
         self.gripper_joint_state_pub = rospy.Publisher('/vector/right_gripper/joint_states', JointState, queue_size=1)
         self.gripper_stat_pub = rospy.Publisher('/vector/right_gripper/stat', GripperStat, queue_size=1)
 
@@ -117,6 +119,16 @@ class VectorControllerConverter():
         self.listener = tf.TransformListener()
         self.trans = None
         self.rot = None
+
+        # Constants for gripper
+        # Fully closed = 0
+        # Fully open = 0.085
+        # The joint is interval is inverted in that 0 joint position = 0.085 gripper
+        # Joint maximum is 0.8
+        self.grip_max_width = 0.085
+        self.grip_joint_max = 0.8
+        self.gripper_cmd = dict()
+        self.gripper_cmd[self.RIGHT_KEY] = None
 
         # Initialize components for moveit IK service
         rospy.logwarn("Waiting for MoveIt! for 10 seconds...")
@@ -194,21 +206,32 @@ class VectorControllerConverter():
         sim_data_msg.effort = msg.actual.effort
         return sim_data_msg
 
-    def convertJointTrajectoryGripperStat(self, msg):
-        
+    def convertJointState2GripperWidth(self, pos):
+        grip_cmd_pos = ((self.grip_joint_max - pos)/self.grip_joint_max) * self.grip_max_width
+        return grip_cmd_pos
+
+    def convertJointTrajectoryGripperStat(self, msg, side):
+
         sim_data_msg = GripperStat()
         sim_data_msg.header = msg.header
-        sim_data_msg.position = msg.actual.positions[0]
-        sim_data_msg.requested_position = msg.desired.positions[0]
+        sim_data_msg.position = self.convertJointState2GripperWidth(msg.actual.positions[0])
+        desired_pos = self.convertJointState2GripperWidth(msg.desired.positions[0]) 
+
+        # Replace with commanded value
+        if not self.gripper_cmd[side] == None:
+            desired_pos = self.gripper_cmd[side]
+
+        sim_data_msg.requested_position = desired_pos
+
         return sim_data_msg
         
-    def gripperStateCallback(self, msg):
+    def gripperStateCallback(self, msg, side):
         
         # Publish the joint state message
         self.gripper_joint_state_pub.publish(self.convertJointTrajectorySensorMsg(msg)) 
 
         # Publish the gripper stat message
-        self.gripper_stat_pub.publish(self.convertJointTrajectoryGripperStat(msg))
+        self.gripper_stat_pub.publish(self.convertJointTrajectoryGripperStat(msg, side))
 
     def panStateCallback(self, msg):
         self.pan_state_pub.publish(self.convertJointTrajectoryControllerState(msg)) 
@@ -219,15 +242,16 @@ class VectorControllerConverter():
     def linStateCallback(self, msg):
         self.lin_state_pub.publish(self.convertJointTrajectorySensorMsg(msg))
 
-    def gripperCallback(self, msg):
+    def gripperCallback(self, msg, side):
+
+        # Store the commanded value
+        self.gripper_cmd[side] = msg.position
 
         # Fully closed = 0
         # Fully open = 0.085
         # The joint is interval is inverted in that 0 joint position = 0.085 gripper
         # Joint maximum is 0.8
-        grip_max_width = 0.085
-        grip_joint_max = 0.8
-        grip_joint_pos = ((grip_max_width - msg.position)/grip_max_width) * grip_joint_max
+        grip_joint_pos = ((self.grip_max_width - msg.position)/self.grip_max_width) * self.grip_joint_max
 
         # Send the position command for now (does not do force)
         jtm = self.jointTrajHelper(self.gripper_name, grip_joint_pos)
