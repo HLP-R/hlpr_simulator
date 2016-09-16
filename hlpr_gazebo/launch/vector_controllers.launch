@@ -12,6 +12,8 @@
     <group if="$(arg moveit_launch)">
         <include file="$(find hlpr_wpi_jaco_moveit_config)/launch/hlpr_wpi_jaco_simple_moveit.launch">
             <arg name="wpi_jaco_launch" value="$(arg wpi_jaco_launch)"/>
+            <arg name="use_wpi_jaco_exec" value="$(arg use_wpi_jaco_exec)"/>
+            <arg name="sim" value="true"/>
         </include>
     </group>
 
