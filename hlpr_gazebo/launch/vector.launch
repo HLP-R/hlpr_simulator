@@ -3,6 +3,13 @@
     <arg name="limited" default="false"/>
     <arg name="paused" default="false"/>
     <arg name="gui" default="true"/>
+    <arg name="world" default="$(find hlpr_gazebo)/launch/simple_room.launch" />
+    <!-- moveit and arm specific. See vector_controller.launch for details -->
+    <arg name="moveit_launch" default="false" />
+    <arg name="wpi_jaco_launch" default="false" />
+    <arg name="use_wpi_jaco_exec" default="false" />
+    <arg name="robot_spawn_loc" default="" />
+
 
     <!-- startup simulated world -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -12,16 +19,20 @@
     </include>
 
     <!-- simple world -->
-    <include file="$(find hlpr_gazebo)/launch/simple_room.launch"/>
+    <include file="$(arg world)"/>
 
     <!-- send robot urdf to param server -->
     <include file="$(find vector_description)/launch/vector_upload.launch"/>
 
     <!-- push robot_description to factory and spawn robot in gazebo -->
-    <node name="spawn_gazebo_model" pkg="gazebo_ros" type="spawn_model" args="-urdf -param robot_description -model robot" respawn="false" output="screen" />
+    <node name="spawn_gazebo_model" pkg="gazebo_ros" type="spawn_model" args="-urdf -param robot_description -model robot $(arg robot_spawn_loc)" respawn="false" output="screen" />
 
     <!-- Bring up robot controllers -->   
-    <include file="$(find hlpr_gazebo)/launch/vector_controllers.launch"/>
+    <include file="$(find hlpr_gazebo)/launch/vector_controllers.launch" >
+        <arg name="moveit_launch" value="$(arg moveit_launch)" />
+        <arg name="wpi_jaco_launch" value="$(arg wpi_jaco_launch)" />
+        <arg name="use_wpi_jaco_exec" value="$(arg use_wpi_jaco_exec)" />
+    </include>
 
     <!-- Setup all of the TFs, states, etc. --> 
     <include file="$(find hlpr_gazebo)/launch/state_publishers.launch"/>
@@ -31,5 +42,28 @@
     <include file="$(find vector_bringup)/launch/teleop/vector_teleop.launch">
         <arg name="sim" value="true"/>
     </include>
+
+    <!-- Custom laser launch scripts -->
+    <group if="$(optenv VECTOR_HAS_SECOND_2D_LASER false)">
+        <node pkg="ira_laser_tools" name="laserscan_multi_merger" type="laserscan_multi_merger" output="screen">
+            <param name="destination_frame" value="base_link"/>
+            <param name="cloud_destination_topic" value="/vector/merged_cloud"/>
+            <param name="scan_destination_topic" value="/vector/scan_multi"/>
+            <param name="laserscan_topics" value ="/vector/$(optenv LASER1_PREFIX front)_scan /vector/$(optenv LASER2_PREFIX rear)_scan"/>
+        </node>
+        <node pkg="laser_filters" type="scan_to_scan_filter_chain" name="vector_laser_filter" clear_params="true" respawn="true">
+            <remap from="scan" to="/vector/scan_multi" />
+            <remap from="scan_filtered" to="/vector/base_scan_filtered" />
+            <param name="target_frame" value="base_link" />
+            <param name="high_fidelity" value="true" />
+            <rosparam command="load" 
+                file="$(find vector_bringup)/launch/sensors/config/laser_scan_filter.yaml" />
+        </node>
+     </group>
+    
+        <group if="$(optenv VECTOR_HAS_ONE_2D_LASER false)">
+        <node pkg="topic_tools" type="relay" name="vector_laser_filter" args="/vector/$(optenv LASER1_PREFIX front)_scan /vector/base_scan_filtered" unless="$(optenv VECTOR_HAS_SECOND_2D_LASER false)"/>
+    </group>
+
 
 </launch>
