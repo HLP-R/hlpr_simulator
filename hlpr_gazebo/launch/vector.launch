@@ -3,7 +3,8 @@
     <arg name="limited" default="false"/>
     <arg name="paused" default="false"/>
     <arg name="gui" default="true"/>
-    <arg name="world" default="$(find hlpr_gazebo)/launch/simple_room.launch" />
+    <arg name="world" default="worlds/empty.world" />
+    <arg name="room" default="$(find hlpr_gazebo)/launch/simple_room.launch" />
     <!-- moveit and arm specific. See vector_controller.launch for details -->
     <arg name="moveit_launch" default="false" />
     <arg name="wpi_jaco_launch" default="false" />
@@ -13,13 +14,13 @@
 
     <!-- startup simulated world -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <arg name="world_name" default="worlds/empty.world"/>
+        <arg name="world_name" default="$(arg world)"/>
         <arg name="paused" value="$(arg paused)"/>
         <arg name="gui" value="$(arg gui)"/>
     </include>
 
     <!-- simple world -->
-    <include file="$(arg world)"/>
+    <include file="$(arg room)"/>
 
     <!-- send robot urdf to param server -->
     <include file="$(find vector_description)/launch/vector_upload.launch"/>
