@@ -11,6 +11,7 @@
     <arg name="wpi_jaco_launch" default="false" />
     <arg name="use_wpi_jaco_exec" default="false" />
     <arg name="robot_spawn_loc" default="" />
+    <arg name="use_octomap" default="false" />
 
 
     <!-- startup simulated world -->
@@ -34,6 +35,7 @@
         <arg name="moveit_launch" value="$(arg moveit_launch)" />
         <arg name="wpi_jaco_launch" value="$(arg wpi_jaco_launch)" />
         <arg name="use_wpi_jaco_exec" value="$(arg use_wpi_jaco_exec)" />
+        <arg name="use_octomap" value="$(arg use_octomap)" />
     </include>
 
     <!-- Setup all of the TFs, states, etc. --> 

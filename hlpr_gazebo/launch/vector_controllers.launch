@@ -7,6 +7,7 @@
     <arg name="moveit_launch" default="false" />
     <arg name="wpi_jaco_launch" default="false"/>
     <arg name="use_wpi_jaco_exec" default="false"/>
+    <arg name="use_octomap" default="false"/>
 
     <!-- Load moveit and wpi_jaco arm wrappers -->
     <group if="$(arg moveit_launch)">
@@ -14,6 +15,7 @@
             <arg name="wpi_jaco_launch" value="$(arg wpi_jaco_launch)"/>
             <arg name="use_wpi_jaco_exec" value="$(arg use_wpi_jaco_exec)"/>
             <arg name="sim" value="true"/>
+            <arg name="use_octomap" value="$(arg use_octomap)"/>
         </include>
     </group>
 
