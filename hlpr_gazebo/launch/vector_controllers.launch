@@ -4,9 +4,10 @@
 
     <!-- moveit_launch: do we launch moveit. wpi_jaco_launch: do we launch wpi_jaco_wrapper warm. use_wpi_jaco_exec - does moveit use wpi_jaco to send commands.
      WARNING: if you set use_wpi_jaco_exec false and moveit launch true - you cannot execute a trajectory through moveit. If you set use_wpi_jaco_exec to true and wpi_jaco_launch to false, arm teleop will be disabled in simulation and moveit will hang when loading.--> 
-    <arg name="moveit_launch" default="false" />
-    <arg name="wpi_jaco_launch" default="false"/>
-    <arg name="use_wpi_jaco_exec" default="false"/>
+    <arg name="moveit_launch" default="true" />
+    <arg name="wpi_jaco_launch" default="true"/>
+    <arg name="use_wpi_jaco_exec" default="true"/>
+    <arg name="use_7dof_jaco" default="true"/>
     <arg name="use_octomap" default="false"/>
     <arg name="moveit_launch_file" default="$(find hlpr_wpi_jaco_moveit_config)/launch/hlpr_wpi_jaco_simple_moveit.launch"/>
 
@@ -26,35 +27,51 @@
     </node>
     <node name="vector2gazebo" pkg="hlpr_gazebo" type="vector_control_interface_two_arms.py" output="screen" if="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)" />
 
+    <group unless="$(arg use_7dof_jaco)">
+        <!-- Arms: Currently only supports position control  -->
+        <rosparam file="$(find hlpr_gazebo)/controller/arm_controller_jaco.yaml" command="load" if="$(optenv VECTOR_HAS_KINOVA_ARM false)"/>
+        <node name="arm_controller_spawner" pkg="controller_manager" type="spawner" output="screen" args="vector/right_arm --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_KINOVA_ARM false)"/>
 
-    <!-- Arms: Currently only supports position control  -->
-    <rosparam file="$(find hlpr_gazebo)/controller/arm_controller_jaco.yaml" command="load" if="$(optenv VECTOR_HAS_KINOVA_ARM false)"/>
-    <node name="arm_controller_spawner" pkg="controller_manager" type="spawner" output="screen" args="vector/right_arm --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_KINOVA_ARM false)"/>
+         <rosparam file="$(find hlpr_gazebo)/controller/two_arms_controller_jaco.yaml" command="load" if="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)"/>
+        <node name="two_arm_controller_spawner" pkg="controller_manager" type="spawner" output="screen" args="vector/left_arm --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)"/>
 
-     <rosparam file="$(find hlpr_gazebo)/controller/two_arms_controller_jaco.yaml" command="load" if="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)"/>
-    <node name="two_arm_controller_spawner" pkg="controller_manager" type="spawner" output="screen" args="vector/left_arm --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)"/>
+        <!-- Setup initial simulation positions -->
+        <node name="r_sim_setup" pkg="hlpr_gazebo" type="body_part_setup.py" output="screen"
+              args="vector/right_arm">
+            <!--param name="init_position" value="0, 3.14, 3.14, 0, 0, 0"/ ZERO CONFIG (straight out)-->
+            <param name="init_position" value="-1.92, 1.50, 0.53, -2.50, -2.91, 0.72"/>
+        </node>
 
-    <!-- Setup initial simulation positions -->
-    <node name="r_sim_setup" pkg="hlpr_gazebo" type="body_part_setup.py" output="screen"
-            args="vector/right_arm">
-        <!--param name="init_position" value="0, 3.14, 3.14, 0, 0, 0"/ ZERO CONFIG (straight out)-->
-        <param name="init_position" value="-1.92, 1.50, 0.53, -2.50, -2.91, 0.72"/>
-    </node>
-
-    <node name="l_sim_setup" pkg="hlpr_gazebo" type="body_part_setup.py" output="screen"
-            args="vector/left_arm" if="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)">
-         <param name="init_position" value="0, 3.14, 3.14, 0, 0, 0"/> <!-- / ZERO CONFIG (straight out) -->
-        <!-- <param name="init_position" value="-1.92, 1.50, 0.53, -2.50, -2.91, 0.72"/> -->
-    </node>
+        <node name="l_sim_setup" pkg="hlpr_gazebo" type="body_part_setup.py" output="screen"
+              args="vector/left_arm" if="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)">
+             <param name="init_position" value="0, 3.14, 3.14, 0, 0, 0"/> <!-- / ZERO CONFIG (straight out) -->
+            <!-- <param name="init_position" value="-1.92, 1.50, 0.53, -2.50, -2.91, 0.72"/> -->
+        </node>
 
 
-    <!-- Gripper -->
-    <rosparam file="$(find hlpr_gazebo)/controller/gripper_controller_robotiq.yaml" command="load" if="$(optenv VECTOR_HAS_ROBOTIQ_GRIPPER false)" />
-    <node name="gripper_controller_spawner" pkg="controller_manager" type="spawner" args="gripper_controller --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_ROBOTIQ_GRIPPER false)"/>
+        <!-- Gripper -->
+        <rosparam file="$(find hlpr_gazebo)/controller/gripper_controller_robotiq.yaml" command="load" if="$(optenv VECTOR_HAS_ROBOTIQ_GRIPPER false)" />
+        <node name="gripper_controller_spawner" pkg="controller_manager" type="spawner" args="gripper_controller --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_ROBOTIQ_GRIPPER false)"/>
 
-    <rosparam file="$(find hlpr_gazebo)/controller/two_arms_gripper_controller_robotiq.yaml" command="load" if="$(optenv VECTOR_HAS_TWO_ROBOTIQ_GRIPPERS false)" />
-    <node name="two_arms_gripper_controller_spawner" pkg="controller_manager" type="spawner" args="left_gripper_controller --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_TWO_ROBOTIQ_GRIPPERS false)"/>
+        <rosparam file="$(find hlpr_gazebo)/controller/two_arms_gripper_controller_robotiq.yaml" command="load" if="$(optenv VECTOR_HAS_TWO_ROBOTIQ_GRIPPERS false)" />
+        <node name="two_arms_gripper_controller_spawner" pkg="controller_manager" type="spawner" args="left_gripper_controller --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_TWO_ROBOTIQ_GRIPPERS false)"/>
+    </group>
 
+    <group if="$(arg use_7dof_jaco)">
+        <!-- Arms: Currently only supports position control  -->
+        <rosparam file="$(find hlpr_gazebo)/controller/arm_controller_j2s7s300.yaml" command="load" if="$(optenv VECTOR_HAS_KINOVA_ARM false)"/>
+        <node name="arm_controller_spawner" pkg="controller_manager" type="spawner" output="screen" args="j2s7s300/effort_joint_trajectory_controller --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_KINOVA_ARM false)"/>
+
+        <!-- Setup initial simulation positions -->
+        <node name="r_sim_setup" pkg="hlpr_gazebo" type="body_part_setup.py" output="screen"
+              args="j2s7s300/effort_joint_trajectory_controller">
+            <param name="init_position" value="0, 3.14, 0, 3.14, 0, 3.14, 0"/>
+        </node>
+
+        <!-- Gripper -->
+        <rosparam file="$(find hlpr_gazebo)/controller/gripper_controller_robotiq_j2s7s300.yaml" command="load" if="$(optenv VECTOR_HAS_ROBOTIQ_GRIPPER false)" />
+        <node name="gripper_controller_spawner" pkg="controller_manager" type="spawner" args="gripper_controller --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_ROBOTIQ_GRIPPER false)"/>
+    </group>
 
     <!-- Pan Tilt -->
     <rosparam file="$(find hlpr_gazebo)/controller/pan_tilt_controller.yaml" command="load" if="$(optenv VECTOR_HAS_KINECT_PAN_TILT false)"/>  
@@ -67,6 +84,6 @@
 
     <!-- Setup initial simulation positions -->
     <node name="lin_sim_setup" pkg="hlpr_gazebo" type="body_part_setup.py" output="screen"
-            args="linear_actuator_controller 0.55"/>
+            args="linear_actuator_controller 0.65"/>
 
 </launch>
