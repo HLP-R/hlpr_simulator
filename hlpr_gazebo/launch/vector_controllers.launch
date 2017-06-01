@@ -24,6 +24,7 @@
     <!-- Interface node for converting vector commands to gazebo commands -->
     <node name="vector2gazebo" pkg="hlpr_gazebo" type="vector_control_interface.py" output="screen" unless="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)" >
         <param name="two_arms" value="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS)" />
+        <param name="use_7dof_jaco" value="$(arg use_7dof_jaco)" />
     </node>
     <node name="vector2gazebo" pkg="hlpr_gazebo" type="vector_control_interface_two_arms.py" output="screen" if="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)" />
 
@@ -65,7 +66,7 @@
         <!-- Setup initial simulation positions -->
         <node name="r_sim_setup" pkg="hlpr_gazebo" type="body_part_setup.py" output="screen"
               args="j2s7s300">
-            <param name="init_position" value="0, 3.14, 0, 3.14, 0, 3.14, 0"/>
+            <param name="init_position" value="0, 1.3, 0, 1.3, 4.2, 1.4, 0"/>
         </node>
 
         <!-- Gripper -->
