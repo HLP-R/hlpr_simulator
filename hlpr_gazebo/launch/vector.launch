@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="limited" default="false"/>
-    <arg name="paused" default="true"/>
+    <arg name="paused" default="false"/>
     <arg name="gui" default="true"/>
     <arg name="world" default="worlds/empty.world" />
     <arg name="room" default="$(find hlpr_gazebo)/launch/simple_room.launch" />
@@ -27,7 +27,9 @@
     <include file="$(arg room)"/>
 
     <!-- send robot urdf to param server -->
-    <include file="$(arg robot_description)"/>
+    <include file="$(arg robot_description)">
+        <arg name="use_7dof_jaco" value="$(arg use_7dof_jaco)" />
+    </include>
 
     <!-- Bring up robot controllers -->   
     <include file="$(find hlpr_gazebo)/launch/vector_controllers.launch" >
@@ -37,15 +39,6 @@
         <arg name="use_octomap" value="$(arg use_octomap)" />
         <arg name="use_7dof_jaco" value="$(arg use_7dof_jaco)" />
     </include>
-
-    <group if="$(arg use_7dof_jaco)">
-        <include file="$(find hlpr_gazebo)/launch/kinova_control.launch">
-            <arg name="kinova_robotName" value="j2s7s300"/>
-            <arg name="kinova_robotType" value="j2s7s300"/>
-            <arg name="use_trajectory_controller" value="false"/>
-	    <arg name="joint_state_topic" value="/vector/right_arm/state" />
-        </include>
-    </group>
 
     <!-- Setup all of the TFs, states, etc. --> 
     <include file="$(find hlpr_gazebo)/launch/state_publishers.launch"/>
