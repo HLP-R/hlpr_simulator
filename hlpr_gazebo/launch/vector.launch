@@ -13,7 +13,6 @@
     <arg name="use_wpi_jaco_exec" default="false" />
     <arg name="robot_spawn_loc" default="" />
     <arg name="use_octomap" default="false" />
-    <arg name="use_7dof_jaco" default="true"/>
 
     <!-- startup simulated world -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -27,9 +26,7 @@
     <include file="$(arg room)"/>
 
     <!-- send robot urdf to param server -->
-    <include file="$(arg robot_description)">
-        <arg name="use_7dof_jaco" value="$(arg use_7dof_jaco)" />
-    </include>
+    <include file="$(arg robot_description)"/>
 
     <!-- Bring up robot controllers -->   
     <include file="$(find hlpr_gazebo)/launch/vector_controllers.launch" >
@@ -37,7 +34,6 @@
         <arg name="wpi_jaco_launch" value="$(arg wpi_jaco_launch)" />
         <arg name="use_wpi_jaco_exec" value="$(arg use_wpi_jaco_exec)" />
         <arg name="use_octomap" value="$(arg use_octomap)" />
-        <arg name="use_7dof_jaco" value="$(arg use_7dof_jaco)" />
     </include>
 
     <!-- Setup all of the TFs, states, etc. --> 

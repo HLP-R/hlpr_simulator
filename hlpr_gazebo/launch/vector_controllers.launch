@@ -7,7 +7,6 @@
     <arg name="moveit_launch" default="true" />
     <arg name="wpi_jaco_launch" default="true"/>
     <arg name="use_wpi_jaco_exec" default="true"/>
-    <arg name="use_7dof_jaco" default="true"/>
     <arg name="use_octomap" default="false"/>
     <arg name="moveit_launch_file" default="$(find hlpr_wpi_jaco_moveit_config)/launch/hlpr_wpi_jaco_simple_moveit.launch"/>
 
@@ -24,11 +23,11 @@
     <!-- Interface node for converting vector commands to gazebo commands -->
     <node name="vector2gazebo" pkg="hlpr_gazebo" type="vector_control_interface.py" output="screen" unless="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)" >
         <param name="two_arms" value="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS)" />
-        <param name="use_7dof_jaco" value="$(arg use_7dof_jaco)" />
+        <param name="use_7dof_jaco" value="$(optenv VECTOR_HAS_KINOVA_7DOF_ARM)" />
     </node>
     <node name="vector2gazebo" pkg="hlpr_gazebo" type="vector_control_interface_two_arms.py" output="screen" if="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)" />
 
-    <group unless="$(arg use_7dof_jaco)">
+    <group unless="$(optenv VECTOR_HAS_KINOVA_7DOF_ARM false)">
         <!-- Arms: Currently only supports position control  -->
         <rosparam file="$(find hlpr_gazebo)/controller/arm_controller_jaco.yaml" command="load" if="$(optenv VECTOR_HAS_KINOVA_ARM false)"/>
         <node name="arm_controller_spawner" pkg="controller_manager" type="spawner" output="screen" args="vector/right_arm --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_KINOVA_ARM false)"/>
@@ -58,7 +57,7 @@
         <node name="two_arms_gripper_controller_spawner" pkg="controller_manager" type="spawner" args="left_gripper_controller --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_TWO_ROBOTIQ_GRIPPERS false)"/>
     </group>
 
-    <group if="$(arg use_7dof_jaco)">
+    <group if="$(optenv VECTOR_HAS_KINOVA_7DOF_ARM false)">
         <!-- Arms: Currently only supports position control  -->
         <rosparam file="$(find hlpr_gazebo)/controller/arm_controller_j2s7s300.yaml" command="load" if="$(optenv VECTOR_HAS_KINOVA_ARM false)"/>
         <node name="arm_controller_spawner" pkg="controller_manager" type="spawner" output="screen" args="j2s7s300 --shutdown-timeout 0.5" if="$(optenv VECTOR_HAS_KINOVA_ARM false)"/>
