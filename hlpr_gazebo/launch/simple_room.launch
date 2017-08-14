@@ -2,7 +2,7 @@
 <launch>
 
     <!-- Spawns square room  -->
-    <node name="spawn_room" pkg="gazebo_ros" type="spawn_model" args="-sdf -file $(find hlpr_gazebo)/objects/sdf/basicRoom.sdf -model room" respawn="false" output="screen" />
+    <!--node name="spawn_room" pkg="gazebo_ros" type="spawn_model" args="-sdf -file $(find hlpr_gazebo)/objects/sdf/basicRoom.sdf -model room" respawn="false" output="screen" /> -->
 
     <!-- Spawns an IKEA wooden kitchen countertop -->
     <node name="spawn_table"  pkg="gazebo_ros" type="spawn_model" args="-urdf -file $(find hlpr_gazebo)/objects/kitchen_counter.urdf -model table -x 2.3 -y 2.0 -z 0.05" respawn="false" output="screen" />

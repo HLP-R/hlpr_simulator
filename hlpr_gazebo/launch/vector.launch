@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="limited" default="false"/>
-    <arg name="paused" default="false"/>
+    <arg name="paused" default="true"/>
     <arg name="gui" default="true"/>
     <arg name="world" default="worlds/empty.world" />
     <arg name="room" default="$(find hlpr_gazebo)/launch/simple_room.launch" />
