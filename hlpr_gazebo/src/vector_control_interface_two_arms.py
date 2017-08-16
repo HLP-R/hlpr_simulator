@@ -43,7 +43,7 @@ import rospy
 import tf
 import math
 from collections import defaultdict
-from vector_msgs.msg import LinearActuatorCmd, GripperCmd, JacoCartesianVelocityCmd
+from vector_msgs.msg import LinearActuatorCmd, GripperCmd, JacoCartesianVelocityCmd, GripperStat
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from control_msgs.msg import JointTrajectoryControllerState
 from sensor_msgs.msg import JointState
@@ -72,6 +72,8 @@ class VectorControllerConverter():
     def __init__(self):
 
         rospy.loginfo("Setting up subscribers and publishers")
+
+        self.RIGHT_KEY = 'right'
 
         # Specific for the linear actuator
         self.linact_pub = rospy.Publisher('/linear_actuator_controller/command', JointTrajectory, queue_size=10) 
@@ -110,11 +112,35 @@ class VectorControllerConverter():
         self.gripper_sub = rospy.Subscriber('/vector/right_gripper/cmd', GripperCmd, self.gripperCallback, queue_size=1)
         self.left_gripper_sub = rospy.Subscriber('/vector/left_gripper/cmd', GripperCmd, self.leftGripperCallback, queue_size=1)
 
+        # Setup some topics that mimic the real robot state topics
+        self.lin_state_sub = rospy.Subscriber('/linear_actuator_controller/state', JointTrajectoryControllerState, self.linStateCallback, queue_size=1)
+        self.lin_state_pub = rospy.Publisher('/vector/joint_states', JointState, queue_size=1)
+        self.arm_sub = rospy.Subscriber('/vector/right_arm/state', JointTrajectoryControllerState, self.armStateCallback, queue_size=1)
+        self.left_arm_sub = rospy.Subscriber('/vector/left_arm/state', JointTrajectoryControllerState, self.leftArmStateCallback, queue_size=1)
+        self.arm_state_pub = rospy.Publisher('/vector/joint_states', JointState, queue_size=1)
+        self.left_arm_state_pub = rospy.Publisher('/vector/joint_states', JointState, queue_size=1)
+        self.gripper_state_sub = rospy.Subscriber('/gripper_controller/state', JointTrajectoryControllerState, self.gripperStateCallback, (self.RIGHT_KEY), queue_size=1)
+        self.left_gripper_state_sub = rospy.Subscriber('/left_gripper_controller/state', JointTrajectoryControllerState, self.leftGripperStateCallback, (self.RIGHT_KEY), queue_size=1)
+        self.gripper_joint_state_pub = rospy.Publisher('/vector/right_gripper/joint_states', JointState, queue_size=1)
+        self.left_gripper_joint_state_pub = rospy.Publisher('/vector/left_gripper/joint_states', JointState, queue_size=1)
+        self.gripper_stat_pub = rospy.Publisher('/vector/right_gripper/stat', GripperStat, queue_size=1)
+        self.left_gripper_stat_pub = rospy.Publisher('/vector/left_gripper/stat', GripperStat, queue_size=1)
+
 
         # Initialize necessary components for TF
         self.listener = tf.TransformListener()
         self.trans = None
         self.rot = None
+
+        # Constants for gripper
+        # Fully closed = 0
+        # Fully open = 0.085
+        # The joint is interval is inverted in that 0 joint position = 0.085 gripper
+        # Joint maximum is 0.8
+        self.grip_max_width = 0.085
+        self.grip_joint_max = 0.8
+        self.gripper_cmd = dict()
+        self.gripper_cmd[self.RIGHT_KEY] = None
 
         # Initialize components for moveit IK service
         rospy.logwarn("Waiting for MoveIt! for 10 seconds...")
@@ -183,11 +209,64 @@ class VectorControllerConverter():
         
         return sim_data_msg
 
+    def convertJointTrajectorySensorMsg(self, msg):
+        # Generate fake JointState msg
+        sim_data_msg = JointState()
+        sim_data_msg.header = msg.header
+        sim_data_msg.name = msg.joint_names
+        sim_data_msg.position = msg.actual.positions
+        sim_data_msg.velocity = msg.actual.velocities
+        sim_data_msg.effort = msg.actual.effort
+        return sim_data_msg
+
+    def convertJointState2GripperWidth(self, pos):
+        grip_cmd_pos = ((self.grip_joint_max - pos)/self.grip_joint_max) * self.grip_max_width
+        return grip_cmd_pos
+
+    def convertJointTrajectoryGripperStat(self, msg, side):
+        sim_data_msg = GripperStat()
+        sim_data_msg.header = msg.header
+        sim_data_msg.position = self.convertJointState2GripperWidth(msg.actual.positions[0])
+        desired_pos = self.convertJointState2GripperWidth(msg.desired.positions[0]) 
+
+        # Replace with commanded value
+        if not self.gripper_cmd[side] == None:
+            desired_pos = self.gripper_cmd[side]
+
+        sim_data_msg.requested_position = desired_pos
+
+        return sim_data_msg
+
     def panStateCallback(self, msg):
         self.pan_state_pub.publish(self.convertJointTrajectoryControllerState(msg)) 
 
     def tiltStateCallback(self, msg):
         self.tilt_state_pub.publish(self.convertJointTrajectoryControllerState(msg)) 
+
+    def linStateCallback(self, msg):
+        self.lin_state_pub.publish(self.convertJointTrajectorySensorMsg(msg))
+
+    def armStateCallback(self,msg):
+        self.arm_state_pub.publish(self.convertJointTrajectorySensorMsg(msg))
+    
+    def leftArmStateCallback(self,msg):
+        self.left_arm_state_pub.publish(self.convertJointTrajectorySensorMsg(msg))
+
+    def gripperStateCallback(self, msg, side):
+        
+        # Publish the joint state message
+        self.gripper_joint_state_pub.publish(self.convertJointTrajectorySensorMsg(msg)) 
+
+        # Publish the gripper stat message
+        self.gripper_stat_pub.publish(self.convertJointTrajectoryGripperStat(msg, side))
+
+    def leftGripperStateCallback(self, msg, side):
+        # Publish the joint state message
+        self.left_gripper_joint_state_pub.publish(self.convertJointTrajectorySensorMsg(msg)) 
+
+        # Publish the gripper stat message
+        self.left_gripper_stat_pub.publish(self.convertJointTrajectoryGripperStat(msg, side))
+
 
     def gripperCallback(self, msg):
 
@@ -220,7 +299,7 @@ class VectorControllerConverter():
         jtm = self.jointTrajHelper(self.gripper_name, grip_joint_pos)
        
         # Send the command
-        self.left_gripper_pub.publish(jtm) 
+        self.left_gripper_pub.publish(jtm)
 
     def isCommandAllZero(self, msg):
         return (msg.x + msg.y + msg.z + 
