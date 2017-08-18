@@ -3,6 +3,7 @@
     <arg name="limited" default="false"/>
     <arg name="paused" default="false"/>
     <arg name="gui" default="true"/>
+    <arg name="gazebo_verbose" default="false" />
     <arg name="world" default="worlds/empty.world" />
     <arg name="room" default="$(find hlpr_gazebo)/launch/simple_room.launch" />
     <arg name="robot_description" default="$(find vector_description)/launch/vector_upload.launch"/>
@@ -20,6 +21,7 @@
         <arg name="world_name" default="$(arg world)"/>
         <arg name="paused" value="$(arg paused)"/>
         <arg name="gui" value="$(arg gui)"/>
+        <arg name="verbose" value="$(arg gazebo_verbose)"/>
     </include>
 
     <!-- simple world -->

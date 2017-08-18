@@ -45,11 +45,10 @@ class JointTrajectorySetup():
 
 
     def run(self):
-        while self.joint_names is None:
-            print "Waiting for joint state information from %s/state topic" %self.controller
-            rospy.sleep(2)
-        print "Received joint state information. Sending %s to default position (rads)" % self.controller
-        print self.position
+        while self.joint_names is None and not rospy.is_shutdown():
+            rospy.loginfo_throttle(5, "Waiting for joint state information from %s/state topic" %self.controller)
+            rospy.sleep(0.1)
+        rospy.loginfo("Received joint state information. Sending %s to default position (rads)" % self.controller + str(self.position))
 
         cmd_msg = self.send_cmd_msg()
         self.goal_pub.publish(cmd_msg)
@@ -68,4 +67,9 @@ if __name__=='__main__':
 
 
     JTT = JointTrajectorySetup(controller=controller, position=position)
-    JTT.run()
+    try:
+        JTT.run()
+    except rospy.exceptions.ROSInterruptException as e:
+        rospy.loginfo("JTT for " + controller + "was interrupted before receiving joint information")
+    else:
+        pass

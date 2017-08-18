@@ -131,15 +131,15 @@ class VectorControllerConverter():
         self.gripper_cmd[self.RIGHT_KEY] = None
 
         # Initialize components for moveit IK service
-        rospy.logwarn("Waiting for MoveIt! for 10 seconds...")
+        rospy.loginfo("Waiting for MoveIt! for 10 seconds...")
         try:
             rospy.wait_for_service('compute_ik', timeout=10.0)  # Wait for 10 seconds and assumes we don't want IK
             self.compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
         except rospy.ROSException, e:
-            rospy.logwarn("MoveIt was not loaded and arm teleop will not be available")
+            rospy.loginfo("MoveIt was not loaded and arm teleop will not be available")
             self.compute_ik = None 
         else: 
-            rospy.logwarn("MoveIt detected")
+            rospy.loginfo("MoveIt detected")
             self.eef_sub = rospy.Subscriber('/vector/right_arm/cartesian_vel_cmd', JacoCartesianVelocityCmd, self.EEFCallback, queue_size=1)
 
         rospy.loginfo("Done Init")
