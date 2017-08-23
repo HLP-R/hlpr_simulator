@@ -152,8 +152,8 @@ class VectorControllerConverter():
             self.compute_ik = None 
         else: 
             rospy.logwarn("MoveIt detected")
-            self.eef_sub = rospy.Subscriber('/vector/right_arm/cartesian_vel_cmd', JacoCartesianVelocityCmd, self.EEFCallback, queue_size=1)
-            self.left_eef_sub = rospy.Subscriber('/vector/left_arm/cartesian_vel_cmd', JacoCartesianVelocityCmd, self.leftEEFCallback, queue_size=1)
+            self.eef_sub = rospy.Subscriber('/vector/right_arm/cartesian_vel_cmd', JacoCartesianVelocityCmd, self.EEFCallback(group='right'), queue_size=1)
+            self.left_eef_sub = rospy.Subscriber('/vector/left_arm/cartesian_vel_cmd', JacoCartesianVelocityCmd, self.EEFCallback(group='left'), queue_size=1)
 
         rospy.loginfo("Done Init")
 
@@ -305,7 +305,7 @@ class VectorControllerConverter():
         return (msg.x + msg.y + msg.z + 
                 msg.theta_x + msg.theta_y + msg.theta_z) == 0
 
-    def EEFCallback(self, msg):
+    def EEFCallback(self, msg, group='right'):
 
         # Check if we have EEF positions yet
         if self.trans == None or self.rot == None:
@@ -368,7 +368,7 @@ class VectorControllerConverter():
         eef_pose.orientation.w = new_rot[3]
 
         # Convert EEF position into joint positions
-        joint_positions, joint_names = self.computeIK(eef_pose)
+        joint_positions, joint_names = self.computeIK(eef_pose, group_name=group+'_arm')
 
         if joint_positions is not None:
             # Send to trajectory controller
@@ -380,19 +380,23 @@ class VectorControllerConverter():
             jtp.time_from_start = rospy.Duration(1.0)
             jtm.points = [jtp]
 
-            self.arm_pub.publish(jtm) 
+            if group=='left':
+                self.left_arm_pub.publish(jtm) 
+            else:
+                self.arm_pub.publish(jtm) 
+
  
-    def computeIK(self, pose):
+    def computeIK(self, pose, parent_frame='base_link',group_name='right_arm'):
 
         # Create a pose to compute IK for
         pose_stamped = PoseStamped()
-        pose_stamped.header.frame_id = 'base_link' # Hard coded for now
+        pose_stamped.header.frame_id = parent_frame # Hard coded for now
         pose_stamped.header.stamp = rospy.Time.now()
         pose_stamped.pose = pose 
         
         # Create a moveit ik request
         ik_request = PositionIKRequest() 
-        ik_request.group_name = 'right_arm'
+        ik_request.group_name =  group_name
         ik_request.pose_stamped = pose_stamped
         ik_request.timeout.secs = 0.1
         ik_request.avoid_collisions = True 
@@ -412,13 +416,13 @@ class VectorControllerConverter():
             print "IK service request failed: %s" % e
             return None,None
    
-    def updateEEF(self):
+    def updateEEF(self, parent_frame='base_link', child_frame='right_ee_link'):
 
         rate = rospy.Rate(100.0) # Run at 100hz?
         # Continuously cycles and updates the EEF using tf if available
         while not rospy.is_shutdown():
             try:
-                (self.trans,self.rot) = self.listener.lookupTransform('/base_link', 'right_ee_link', rospy.Time(0))
+                (self.trans,self.rot) = self.listener.lookupTransform(parent_frame, child_frame, rospy.Time(0))
                 # (self.trans,self.rot) = self.listener.lookupTransform('/base_link', 'left_ee_link', rospy.Time(0))
 
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
@@ -429,131 +433,131 @@ class VectorControllerConverter():
 
     #### For left arm it is hard coded for now as the right arm is hardcoded too..
 
-    def leftEEFCallback(self, msg):
+    # def leftEEFCallback(self, msg):
 
-        # Check if we have EEF positions yet
-        if self.trans == None or self.rot == None:
-            return
+    #     # Check if we have EEF positions yet
+    #     if self.trans == None or self.rot == None:
+    #         return
 
-        # Check if the command is just zero - if so do nothing
-        if self.isCommandAllZero(msg):
-            return
+    #     # Check if the command is just zero - if so do nothing
+    #     if self.isCommandAllZero(msg):
+    #         return
 
-        # Determine current position of EEF
-        position = self.trans
+    #     # Determine current position of EEF
+    #     position = self.trans
 
-        # Convert from Quaternion to RPY in radians
-        rotation = tf.transformations.euler_from_quaternion(self.rot, 'rxyz') 
-        rotation = [r * (180/math.pi) for r in rotation] # Convert to degrees
+    #     # Convert from Quaternion to RPY in radians
+    #     rotation = tf.transformations.euler_from_quaternion(self.rot, 'rxyz') 
+    #     rotation = [r * (180/math.pi) for r in rotation] # Convert to degrees
 
-        # Convert msg from kinova convention (xyz) to vector convention
-        converted_msg = JacoCartesianVelocityCmd()
-        converted_msg.x = msg.z
-        converted_msg.y = msg.x
-        converted_msg.z = msg.y
-        converted_msg.theta_x = msg.theta_z
-        converted_msg.theta_y = msg.theta_y
-        converted_msg.theta_z = msg.theta_x
+    #     # Convert msg from kinova convention (xyz) to vector convention
+    #     converted_msg = JacoCartesianVelocityCmd()
+    #     converted_msg.x = msg.z
+    #     converted_msg.y = msg.x
+    #     converted_msg.z = msg.y
+    #     converted_msg.theta_x = msg.theta_z
+    #     converted_msg.theta_y = msg.theta_y
+    #     converted_msg.theta_z = msg.theta_x
 
-        # Propogate the position based on velocity
-        # assume a small time dt to compute position and rotation
-        pose = defaultdict(dict)
-        pose['position']['value'] = dict()
-        pose['rotation']['value'] = dict()
-        pose['position']['keys'] = ['x','y','z']
-        pose['rotation']['keys'] = ['theta_x','theta_y','theta_z'] 
-        pose['rotation']['speed'] = "0.075" # rotation speed (degrees)
-        pose['position']['speed'] = "0.15" # position speed (cm)
+    #     # Propogate the position based on velocity
+    #     # assume a small time dt to compute position and rotation
+    #     pose = defaultdict(dict)
+    #     pose['position']['value'] = dict()
+    #     pose['rotation']['value'] = dict()
+    #     pose['position']['keys'] = ['x','y','z']
+    #     pose['rotation']['keys'] = ['theta_x','theta_y','theta_z'] 
+    #     pose['rotation']['speed'] = "0.075" # rotation speed (degrees)
+    #     pose['position']['speed'] = "0.15" # position speed (cm)
 
-        for val in ['position','rotation']:
-            for i in xrange(len(pose[val]['keys'])): 
-                field = pose[val]['keys'][i]
-                pose[val]['value'][field] = eval('converted_msg.'+field+'*'+pose[val]['speed']+' + '+val+'[i]')
+    #     for val in ['position','rotation']:
+    #         for i in xrange(len(pose[val]['keys'])): 
+    #             field = pose[val]['keys'][i]
+    #             pose[val]['value'][field] = eval('converted_msg.'+field+'*'+pose[val]['speed']+' + '+val+'[i]')
      
-        # Pull out values from dictionary 
-        new_position = pose['position']['value']
-        new_rot = pose['rotation']['value']
-        for theta in new_rot:
-            new_rot[theta] = new_rot[theta] * (math.pi/180.0) # conver to radians
+    #     # Pull out values from dictionary 
+    #     new_position = pose['position']['value']
+    #     new_rot = pose['rotation']['value']
+    #     for theta in new_rot:
+    #         new_rot[theta] = new_rot[theta] * (math.pi/180.0) # conver to radians
 
-        # Convert into quaternion
-        new_rot = tf.transformations.quaternion_from_euler(new_rot['theta_x'], new_rot['theta_y'],new_rot['theta_z'], 'rxyz')
+    #     # Convert into quaternion
+    #     new_rot = tf.transformations.quaternion_from_euler(new_rot['theta_x'], new_rot['theta_y'],new_rot['theta_z'], 'rxyz')
 
-        # Create a Pose and populate 
-        eef_pose = Pose()
-        eef_pose.position = Point()
-        eef_pose.position.x = new_position['x']
-        eef_pose.position.y = new_position['y']
-        eef_pose.position.z = new_position['z']
-        eef_pose.orientation = Quaternion()
-        eef_pose.orientation.x = new_rot[0]
-        eef_pose.orientation.y = new_rot[1]
-        eef_pose.orientation.z = new_rot[2]
-        eef_pose.orientation.w = new_rot[3]
+    #     # Create a Pose and populate 
+    #     eef_pose = Pose()
+    #     eef_pose.position = Point()
+    #     eef_pose.position.x = new_position['x']
+    #     eef_pose.position.y = new_position['y']
+    #     eef_pose.position.z = new_position['z']
+    #     eef_pose.orientation = Quaternion()
+    #     eef_pose.orientation.x = new_rot[0]
+    #     eef_pose.orientation.y = new_rot[1]
+    #     eef_pose.orientation.z = new_rot[2]
+    #     eef_pose.orientation.w = new_rot[3]
 
-        # Convert EEF position into joint positions
-        joint_positions, joint_names = self.computeIK2(eef_pose)
+    #     # Convert EEF position into joint positions
+    #     joint_positions, joint_names = self.computeIK2(eef_pose)
 
-        if joint_positions is not None:
-            # Send to trajectory controller
-            # For now send directly to gazebo
-            jtm = JointTrajectory()   
-            jtm.joint_names = joint_names
-            jtp = JointTrajectoryPoint()
-            jtp.positions = joint_positions
-            jtp.time_from_start = rospy.Duration(1.0)
-            jtm.points = [jtp]
+    #     if joint_positions is not None:
+    #         # Send to trajectory controller
+    #         # For now send directly to gazebo
+    #         jtm = JointTrajectory()   
+    #         jtm.joint_names = joint_names
+    #         jtp = JointTrajectoryPoint()
+    #         jtp.positions = joint_positions
+    #         jtp.time_from_start = rospy.Duration(1.0)
+    #         jtm.points = [jtp]
 
-            self.left_arm_pub.publish(jtm) 
+    #         self.left_arm_pub.publish(jtm) 
 
-    def computeIK2(self, pose):
+    # def computeIK2(self, pose):
 
-        # Create a pose to compute IK for
-        pose_stamped = PoseStamped()
-        pose_stamped.header.frame_id = 'base_link' # Hard coded for now
-        pose_stamped.header.stamp = rospy.Time.now()
-        pose_stamped.pose = pose 
+    #     # Create a pose to compute IK for
+    #     pose_stamped = PoseStamped()
+    #     pose_stamped.header.frame_id = 'base_link' # Hard coded for now
+    #     pose_stamped.header.stamp = rospy.Time.now()
+    #     pose_stamped.pose = pose 
         
-        # Create a moveit ik request
-        ik_request = PositionIKRequest() 
-        ik_request.group_name = 'left_arm'
-        ik_request.pose_stamped = pose_stamped
-        ik_request.timeout.secs = 0.1
-        ik_request.avoid_collisions = True 
+    #     # Create a moveit ik request
+    #     ik_request = PositionIKRequest() 
+    #     ik_request.group_name = 'left_arm'
+    #     ik_request.pose_stamped = pose_stamped
+    #     ik_request.timeout.secs = 0.1
+    #     ik_request.avoid_collisions = True 
          
-        try:
-            request_value = self.compute_ik(ik_request)
-            if request_value.error_code.val == -31:
-                rospy.logwarn("Teleop Arm: No IK Solution")
-            if request_value.error_code.val == 1:
-                joint_positions = request_value.solution.joint_state.position[1:7] 
-                joint_names = request_value.solution.joint_state.name[1:7]
-                return joint_positions,joint_names
-            else:
-                return None,None
+    #     try:
+    #         request_value = self.compute_ik(ik_request)
+    #         if request_value.error_code.val == -31:
+    #             rospy.logwarn("Teleop Arm: No IK Solution")
+    #         if request_value.error_code.val == 1:
+    #             joint_positions = request_value.solution.joint_state.position[1:7] 
+    #             joint_names = request_value.solution.joint_state.name[1:7]
+    #             return joint_positions,joint_names
+    #         else:
+    #             return None,None
  
-        except rospy.ServiceException, e:
-            print "IK service request failed: %s" % e
-            return None,None
+    #     except rospy.ServiceException, e:
+    #         print "IK service request failed: %s" % e
+    #         return None,None
    
-    def updateLeftEEF(self):
+    # def updateLeftEEF(self):
 
-        rate = rospy.Rate(100.0) # Run at 100hz?
-        # Continuously cycles and updates the EEF using tf if available
-        while not rospy.is_shutdown():
-            try:
-                (self.trans,self.rot) = self.listener.lookupTransform('/base_link', 'left_ee_link', rospy.Time(0))
+    #     rate = rospy.Rate(100.0) # Run at 100hz?
+    #     # Continuously cycles and updates the EEF using tf if available
+    #     while not rospy.is_shutdown():
+    #         try:
+    #             (self.trans,self.rot) = self.listener.lookupTransform('/base_link', 'left_ee_link', rospy.Time(0))
 
-            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                continue
+    #         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+    #             continue
 
-            rate.sleep()
+    #         rate.sleep()
 
 if __name__=='__main__':
     rospy.init_node('VectorController2Gazebo')
     rospy.loginfo("Starting up Vector Controller Converter Node")
     vec = VectorControllerConverter()
     vec.updateEEF()
-    vec.updateLeftEEF()
+    vec.updateEEF(child_frame='left_ee_link')
     #rospy.spin()
 

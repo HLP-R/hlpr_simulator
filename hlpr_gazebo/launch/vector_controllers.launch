@@ -64,15 +64,14 @@
 	<group if="$(optenv VECTOR_HAS_KINOVA_7DOF_ARM false)">
 	    <node name="r_sim_setup" pkg="hlpr_gazebo" type="body_part_setup.py" output="screen"
 		    args="vector/right_arm">
-		<!--param name="init_position" value="0, 3.14, 3.14, 0, 0, 0"/ ZERO CONFIG (straight out)-->
-		<param name="init_position" value="3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14"/>
+			<!--param name="init_position" value="3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14"/--> <!-- ZERO CONFIG (straight out)-->
+			<param name="init_position" value="0.51, 4.87, 2.21, 1.75, 2.64, 1.61, 0.52"/>
 	    </node>
 
 	    <node name="l_sim_setup" pkg="hlpr_gazebo" type="body_part_setup.py" output="screen"
 		    args="vector/left_arm" if="$(optenv VECTOR_HAS_TWO_KINOVA_ARMS false)">
-		 <param name="init_position" value="3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14"/> <!-- / ZERO CONFIG (straight out) -->
-		<!--param name="init_position" value="0, 3.14, 3.14, 0, 0, 0"/> -->
-		<!-- <param name="init_position" value="-1.92, 1.50, 0.53, -2.50, -2.91, 0.72"/> -->
+			 <!--param name="init_position" value="3.14, 3.14, 3.14, 3.14, 3.14, 3.14, 3.14"/--> <!-- / ZERO CONFIG (straight out) -->
+			<param name="init_position" value="-0.34, 1.58, 1.57, 1.83, 2.89, 1.69, 0.25"/>
 	    </node>
 
 	</group>
