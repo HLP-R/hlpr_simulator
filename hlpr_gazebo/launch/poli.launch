@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find hlpr_gazebo)/launch/vector.launch">
+        <arg name="robot_description" default="$(find poli_description)/launch/poli_upload.launch"/>
+    </include>
+</launch>

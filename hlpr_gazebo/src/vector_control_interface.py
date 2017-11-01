@@ -87,6 +87,7 @@ class VectorControllerConverter():
 
         # Get flag for one vs. two arms
         self.two_arms = get_param('/two_arms', False)
+        self.use_7dof_jaco = get_param('/use_7dof_jaco', False)
 
         # Setup pan/tilt sim to real controller topics to simulate the real robot
         # Needed because ROS controller has a different message than Stanley
@@ -100,7 +101,10 @@ class VectorControllerConverter():
         self.gripper_name = get_param('/gripper_controller/joints', '')
 
         # Setup the arm controller
-        self.arm_pub = rospy.Publisher('/vector/right_arm/command', JointTrajectory, queue_size=10)
+	if self.use_7dof_jaco:
+            self.arm_pub = rospy.Publisher('/j2s7s300/command', JointTrajectory, queue_size=10)
+	else:
+            self.arm_pub = rospy.Publisher('/vector/right_arm/command', JointTrajectory, queue_size=10)
 
         # Setup subscribers to listen to the commands
         self.linact_command_sub = rospy.Subscriber('/vector/linear_actuator_cmd', LinearActuatorCmd, self.linactCallback, queue_size=10)  
