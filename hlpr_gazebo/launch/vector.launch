@@ -6,13 +6,16 @@
     <arg name="world" default="worlds/empty.world" />
     <arg name="room" default="$(find hlpr_gazebo)/launch/simple_room.launch" />
     <arg name="robot_description" default="$(find vector_description)/launch/vector_upload.launch"/>
+    <arg name="robot_spawn_loc" default="" />
+    <!-- REMOVING ALL INSTANCES OF MOVEIT AND ARM DRIVER. NO LONGER USING THIS -->
     <!-- moveit and arm specific. See vector_controller.launch for details -->
+    <!--
     <arg name="moveit_launch" default="false" />
     <arg name="moveit_launch_file" default="$(find hlpr_wpi_jaco_moveit_config)/launch/hlpr_wpi_jaco_simple_moveit.launch" />
     <arg name="wpi_jaco_launch" default="false" />
     <arg name="use_wpi_jaco_exec" default="false" />
-    <arg name="robot_spawn_loc" default="" />
     <arg name="use_octomap" default="false" />
+    -->
 
     <!-- startup simulated world -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -30,10 +33,12 @@
 
     <!-- Bring up robot controllers -->   
     <include file="$(find hlpr_gazebo)/launch/vector_controllers.launch" >
+        <!--
         <arg name="moveit_launch" value="$(arg moveit_launch)" />
         <arg name="wpi_jaco_launch" value="$(arg wpi_jaco_launch)" />
         <arg name="use_wpi_jaco_exec" value="$(arg use_wpi_jaco_exec)" />
         <arg name="use_octomap" value="$(arg use_octomap)" />
+        -->
     </include>
 
     <!-- Setup all of the TFs, states, etc. --> 

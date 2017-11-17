@@ -89,7 +89,9 @@ class VectorControllerConverter():
 
         # Get flag for one vs. two arms
         self.two_arms = get_param('/two_arms', False)
-        self.use_7dof_jaco = os.environ['VECTOR_HAS_KINOVA_7DOF_ARM']
+        self.use_7dof_jaco = os.getenv('VECTOR_HAS_KINOVA_7DOF_ARM', False)
+
+        rospy.logwarn("Using 7DOF arm: %s" % self.use_7dof_jaco)
 
         # Setup pan/tilt sim to real controller topics to simulate the real robot
         # Needed because ROS controller has a different message than Stanley
@@ -103,9 +105,9 @@ class VectorControllerConverter():
         self.gripper_name = get_param('/gripper_controller/joints', '')
 
         # Setup the arm controller
-	if self.use_7dof_jaco:
+        if self.use_7dof_jaco is True:
             self.arm_pub = rospy.Publisher('/j2s7s300/command', JointTrajectory, queue_size=10)
-	else:
+        else:
             self.arm_pub = rospy.Publisher('/vector/right_arm/command', JointTrajectory, queue_size=10)
 
         # Setup subscribers to listen to the commands
@@ -122,7 +124,7 @@ class VectorControllerConverter():
         self.gripper_stat_pub = rospy.Publisher('/vector/right_gripper/stat', GripperStat, queue_size=1)
 
         # Setup an additional one for the 7dof arm
-        if self.use_7dof_jaco:
+        if self.use_7dof_jaco is True:
             self.arm_state_pub = rospy.Publisher('/j2s7s300_driver/out/joint_state', JointState, queue_size=1)
             self.joint_state_sub = rospy.Subscriber('/joint_states', JointState, self.js_cb, queue_size=1)
             self.arm_joint_names = ['j2s7s300_joint_1','j2s7s300_joint_2','j2s7s300_joint_3','j2s7s300_joint_4','j2s7s300_joint_5','j2s7s300_joint_6','j2s7s300_joint_7']
