@@ -37,7 +37,8 @@
     <!-- Setup initial simulation positions -->
     <node name="r_sim_setup" pkg="hlpr_gazebo" type="body_part_setup.py" output="screen"
             args="vector/right_arm">
-        <!--param name="init_position" value="0, 3.14, 3.14, 0, 0, 0"/ ZERO CONFIG (straight out)-->
+        <!-- ZERO CONFIG (straight out) -->
+        <!-- <param name="init_position" value="0, 3.14, 3.14, 0, 0, 0"/> --> 
         <param name="init_position" value="-1.92, 1.50, 0.53, -2.50, -2.91, 0.72"/>
     </node>
 
