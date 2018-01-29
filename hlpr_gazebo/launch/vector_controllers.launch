@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <!-- Launch file that loads all of the controllers for gazebo -->
-
+    <!-- GETTING RID OF ALL THINGS RELATED TO MOVEIT IN THIS LAUNCH. LAUNCH IT SEPARATELY USING start_robot_services.launch in hlpr_bringup-->
     <!-- Trak IK Params -->
     <arg name="trakik_launch" default="true" />
     <arg name="trakik_launch_file" default="$(find hlpr_trac_ik)/launch/start_ik_service.launch"/>

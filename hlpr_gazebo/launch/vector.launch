@@ -6,7 +6,8 @@
     <arg name="world" default="worlds/empty.world" />
     <arg name="room" default="$(find hlpr_gazebo)/launch/simple_room.launch" />
     <arg name="robot_description" default="$(find vector_description)/launch/vector_upload.launch"/>
-    <!-- trak_ik and arm specific. See vector_controllers.launch for details -->
+    <!-- REMOVING ALL INSTANCES OF MOVEIT AND ARM DRIVER. NO LONGER USING THIS -->
+    <!-- trak_ik and arm specific. See vector_controllers.launch for details -->    
     <arg name="trakik_launch" default="true" />
     <arg name="trakik_launch_file" default="$(find hlpr_trac_ik)/launch/start_ik_service.launch"/>
     <arg name="robot_spawn_loc" default="" />

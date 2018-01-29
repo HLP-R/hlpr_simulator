@@ -19,5 +19,5 @@ j2s7s300:
         j2s7s300_joint_6: {trajectory: 0.1, goal: 0.1}
         j2s7s300_joint_7: {trajectory: 0.1, goal: 0.1}
     stop_trajectory_duration: 0.5
-    state_publish_rate:  25
+    state_publish_rate:  100
     action_monitor_rate: 10

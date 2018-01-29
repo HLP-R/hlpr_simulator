@@ -41,7 +41,9 @@ Note: No longer depends on MoveIt! Uses trak_ik instead
 
 import rospy
 import tf
+import os
 import math
+import numpy as np
 from collections import defaultdict
 from vector_msgs.msg import LinearActuatorCmd, GripperCmd, JacoCartesianVelocityCmd, GripperStat
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
@@ -89,6 +91,8 @@ class VectorControllerConverter():
         # Gets flag for 6-DoF vs. 7-DoF
         self.use_7dof_jaco = get_param('use_7dof_jaco', False)
 
+        rospy.logwarn("Using 7DOF arm: %s" % self.use_7dof_jaco)
+
         # Setup pan/tilt sim to real controller topics to simulate the real robot
         # Needed because ROS controller has a different message than Stanley
         self.pan_state_sub = rospy.Subscriber('/pan_sim_controller/state', JointTrajectoryControllerState, self.panStateCallback, queue_size=1)
@@ -129,6 +133,12 @@ class VectorControllerConverter():
         self.gripper_joint_state_pub = rospy.Publisher('/vector/right_gripper/joint_states', JointState, queue_size=1)
         self.gripper_stat_pub = rospy.Publisher('/vector/right_gripper/stat', GripperStat, queue_size=1)
 
+        # Setup an additional one for the 7dof arm
+        if self.use_7dof_jaco is True:
+            self.arm_state_pub = rospy.Publisher('/j2s7s300_driver/out/joint_state', JointState, queue_size=1)
+            self.joint_state_sub = rospy.Subscriber('/joint_states', JointState, self.js_cb, queue_size=1)
+            self.arm_joint_names = ['j2s7s300_joint_1','j2s7s300_joint_2','j2s7s300_joint_3','j2s7s300_joint_4','j2s7s300_joint_5','j2s7s300_joint_6','j2s7s300_joint_7']
+
         # Initialize necessary components for TF
         self.listener = tf.TransformListener()
         self.trans = None
@@ -158,6 +168,24 @@ class VectorControllerConverter():
 
         rospy.loginfo("Done Init")
 
+
+    def js_cb(self, msg):
+        # Pull out the joint values related to the arm and publish out
+
+        new_msg = JointState()
+        new_msg.header = msg.header
+        # Get index of arm joints
+        arm_idx = [msg.name.index(x) for x in self.arm_joint_names]        
+        positions = np.array(msg.position)[arm_idx]
+        effort = np.array(msg.effort)[arm_idx]
+        velocity = np.array(msg.velocity)[arm_idx]
+
+        # Store the new data
+        new_msg.name = self.arm_joint_names
+        new_msg.position = positions
+        new_msg.effort = effort
+        new_msg.velocity = velocity
+        self.arm_state_pub.publish(new_msg)
 
     def jointTrajHelper(self, joint_names, positions):
 
