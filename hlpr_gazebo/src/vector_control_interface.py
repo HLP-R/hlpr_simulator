@@ -36,7 +36,7 @@ vector_control_interface.py
 This script takes commands sent through the "real robot" topics and converts them
 into standard ROS messages for Gazebo to interpret
 
-Note: it currently depends on MoveIt! to perform arm manipulation using the joystick
+Note: No longer depends on MoveIt! Uses trak_ik instead
 """
 
 import rospy
@@ -49,8 +49,7 @@ from control_msgs.msg import JointTrajectoryControllerState
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64
 from geometry_msgs.msg import Pose, PoseStamped, Point, Quaternion
-from moveit_msgs.srv import GetPositionIK
-from moveit_msgs.msg import PositionIKRequest
+from hlpr_trac_ik.srv import *
 import dynamixel_msgs.msg
 
 def get_param(name, value=None):
@@ -86,8 +85,9 @@ class VectorControllerConverter():
         self.tilt_names = get_param('/tilt_sim_controller/joints', '')          
 
         # Get flag for one vs. two arms
-        self.two_arms = get_param('/two_arms', False)
-        self.use_7dof_jaco = get_param('/use_7dof_jaco', False)
+        self.two_arms = get_param('two_arms', False)
+        # Gets flag for 6-DoF vs. 7-DoF
+        self.use_7dof_jaco = get_param('use_7dof_jaco', False)
 
         # Setup pan/tilt sim to real controller topics to simulate the real robot
         # Needed because ROS controller has a different message than Stanley
@@ -100,11 +100,21 @@ class VectorControllerConverter():
         self.gripper_pub = rospy.Publisher('/gripper_controller/command', JointTrajectory, queue_size=10)
         self.gripper_name = get_param('/gripper_controller/joints', '')
 
-        # Setup the arm controller
-	if self.use_7dof_jaco:
+        # Sets up the arm controller
+        if self.use_7dof_jaco:
             self.arm_pub = rospy.Publisher('/j2s7s300/command', JointTrajectory, queue_size=10)
-	else:
+        else:
             self.arm_pub = rospy.Publisher('/vector/right_arm/command', JointTrajectory, queue_size=10)
+
+        # Listens to arm joints states for IK
+        if self.use_7dof_jaco:
+            self.arm_sub = rospy.Subscriber('/j2s7s300/state', JointTrajectoryControllerState, self.armStateCallback, queue_size=1)
+        else:
+            self.arm_sub = rospy.Subscriber('/vector/right_arm/state', JointTrajectoryControllerState, self.armStateCallback, queue_size=1)
+        
+        # Initializes member variables to trak the arm joint state
+        self.arm_joint_state = None
+        self.arm_joint_names = None
 
         # Setup subscribers to listen to the commands
         self.linact_command_sub = rospy.Subscriber('/vector/linear_actuator_cmd', LinearActuatorCmd, self.linactCallback, queue_size=10)  
@@ -134,16 +144,16 @@ class VectorControllerConverter():
         self.gripper_cmd = dict()
         self.gripper_cmd[self.RIGHT_KEY] = None
 
-        # Initialize components for moveit IK service
-        rospy.logwarn("Waiting for MoveIt! for 10 seconds...")
+        # Initialize components for Trak IK service
+        rospy.logwarn("Waiting for trak_ik for 10 seconds...")
         try:
-            rospy.wait_for_service('compute_ik', timeout=10.0)  # Wait for 10 seconds and assumes we don't want IK
-            self.compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
+            rospy.wait_for_service('hlpr_trac_ik', timeout=10.0)  # Wait for 10 seconds and assumes we don't want IK
+            self.compute_ik = rospy.ServiceProxy('hlpr_trac_ik', IKHandler)
         except rospy.ROSException, e:
-            rospy.logwarn("MoveIt was not loaded and arm teleop will not be available")
+            rospy.logwarn("IKHanlder Service was not loaded and arm teleop will not be available")
             self.compute_ik = None 
         else: 
-            rospy.logwarn("MoveIt detected")
+            rospy.logwarn("IKHandler detected")
             self.eef_sub = rospy.Subscriber('/vector/right_arm/cartesian_vel_cmd', JacoCartesianVelocityCmd, self.EEFCallback, queue_size=1)
 
         rospy.loginfo("Done Init")
@@ -261,14 +271,18 @@ class VectorControllerConverter():
         jtm = self.jointTrajHelper(self.gripper_name, grip_joint_pos)
        
         # Send the command
-        self.gripper_pub.publish(jtm) 
+        self.gripper_pub.publish(jtm)
+
+    def armStateCallback(self, msg):
+        # gets the current arm state in joint space (joint angles)
+        self.arm_joint_state = msg.actual.positions
+        self.arm_joint_names = msg.joint_names
 
     def isCommandAllZero(self, msg):
         return (msg.x + msg.y + msg.z + 
                 msg.theta_x + msg.theta_y + msg.theta_z) == 0
 
     def EEFCallback(self, msg):
-
         # Check if we have EEF positions yet
         if self.trans == None or self.rot == None:
             return
@@ -301,7 +315,7 @@ class VectorControllerConverter():
         pose['position']['keys'] = ['x','y','z']
         pose['rotation']['keys'] = ['theta_x','theta_y','theta_z'] 
         pose['rotation']['speed'] = "0.075" # rotation speed (degrees)
-        pose['position']['speed'] = "0.15" # position speed (cm)
+        pose['position']['speed'] = "0.3" # position speed (cm)
 
         for val in ['position','rotation']:
             for i in xrange(len(pose[val]['keys'])): 
@@ -346,42 +360,45 @@ class VectorControllerConverter():
 
  
     def computeIK(self, pose):
+        # Create a Trak IK request
+        ik_request = IKHandlerRequest() 
+        ik_request.goals = [pose]
+        ik_request.tolerance = [0.01,0.01,0.01,0.01,0.01,0.01,0.01]
+        ik_request.verbose = False
 
-        # Create a pose to compute IK for
-        pose_stamped = PoseStamped()
-        pose_stamped.header.frame_id = 'base_link' # Hard coded for now
-        pose_stamped.header.stamp = rospy.Time.now()
-        pose_stamped.pose = pose 
+        # Checks for the current arm state in joint space
+        if not self.arm_joint_state == None:
+            ik_request.origin = self.arm_joint_state
+        else:
+            rospy.logerror("IK service request failed: Current arm joint state not read")
+            return None,None
         
-        # Create a moveit ik request
-        ik_request = PositionIKRequest() 
-        ik_request.group_name = 'arm' # Hard coded for now
-        ik_request.pose_stamped = pose_stamped
-        ik_request.timeout.secs = 0.1
-        ik_request.avoid_collisions = True 
-         
+        # Makes IK request
         try:
             request_value = self.compute_ik(ik_request)
-            if request_value.error_code.val == -31:
-                rospy.logwarn("Teleop Arm: No IK Solution")
-            if request_value.error_code.val == 1:
-                joint_positions = request_value.solution.joint_state.position[1:7] 
-                joint_names = request_value.solution.joint_state.name[1:7]
+            if request_value.success:
+                joint_positions = request_value.poses[0].positions
+                joint_names = self.arm_joint_names
                 return joint_positions,joint_names
             else:
+                rospy.logwarn("Teleop Arm: No IK Solution")
                 return None,None
- 
+
         except rospy.ServiceException, e:
-            print "IK service request failed: %s" % e
+            rospy.logerror("IK service request failed: %s", e)
             return None,None
    
     def updateEEF(self):
-
+        # Selects are type (6-DoF or 7-DoF Jaco)
+        if self.use_7dof_jaco:
+            end_link = 'j2s7s300_ee_link'
+        else:
+            end_link = 'right_ee_link'
         rate = rospy.Rate(100.0) # Run at 100hz?
         # Continuously cycles and updates the EEF using tf if available
         while not rospy.is_shutdown():
             try:
-                (self.trans,self.rot) = self.listener.lookupTransform('/base_link', 'right_ee_link', rospy.Time(0))
+                (self.trans,self.rot) = self.listener.lookupTransform('/linear_actuator_link', end_link, rospy.Time(0))
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
 
