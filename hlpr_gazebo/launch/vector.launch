@@ -6,20 +6,18 @@
     <arg name="world" default="worlds/empty.world" />
     <arg name="room" default="$(find hlpr_gazebo)/launch/simple_room.launch" />
     <arg name="robot_description" default="$(find vector_description)/launch/vector_upload.launch"/>
-    <!-- moveit and arm specific. See vector_controller.launch for details -->
-    <arg name="moveit_launch" default="false" />
-    <arg name="moveit_launch_file" default="$(find hlpr_wpi_jaco_moveit_config)/launch/hlpr_wpi_jaco_simple_moveit.launch" />
-    <arg name="wpi_jaco_launch" default="false" />
-    <arg name="use_wpi_jaco_exec" default="false" />
+    <!-- REMOVING ALL INSTANCES OF MOVEIT AND ARM DRIVER. NO LONGER USING THIS -->
+    <!-- trak_ik and arm specific. See vector_controllers.launch for details -->    
+    <arg name="trakik_launch" default="true" />
+    <arg name="trakik_launch_file" default="$(find hlpr_trac_ik)/launch/start_ik_service.launch"/>
     <arg name="robot_spawn_loc" default="" />
-    <arg name="use_octomap" default="false" />
-
 
     <!-- startup simulated world -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="world_name" default="$(arg world)"/>
         <arg name="paused" value="$(arg paused)"/>
         <arg name="gui" value="$(arg gui)"/>
+        <arg name="debug" value="false"/>
     </include>
 
     <!-- simple world -->
@@ -28,15 +26,10 @@
     <!-- send robot urdf to param server -->
     <include file="$(arg robot_description)"/>
 
-    <!-- push robot_description to factory and spawn robot in gazebo -->
-    <node name="spawn_gazebo_model" pkg="gazebo_ros" type="spawn_model" args="-urdf -param robot_description -model robot $(arg robot_spawn_loc)" respawn="false" output="screen" />
-
     <!-- Bring up robot controllers -->   
     <include file="$(find hlpr_gazebo)/launch/vector_controllers.launch" >
-        <arg name="moveit_launch" value="$(arg moveit_launch)" />
-        <arg name="wpi_jaco_launch" value="$(arg wpi_jaco_launch)" />
-        <arg name="use_wpi_jaco_exec" value="$(arg use_wpi_jaco_exec)" />
-        <arg name="use_octomap" value="$(arg use_octomap)" />
+        <arg name="trakik_launch_file" value="$(arg trakik_launch_file)" />
+        <arg name="trakik_launch" value="$(arg trakik_launch)" />
     </include>
 
     <!-- Setup all of the TFs, states, etc. --> 
@@ -47,6 +40,9 @@
     <include file="$(find vector_bringup)/launch/teleop/vector_teleop.launch">
         <arg name="sim" value="true"/>
     </include>
+
+    <!-- push robot_description to factory and spawn robot in gazebo -->
+    <node name="spawn_gazebo_model" pkg="gazebo_ros" type="spawn_model" args="-urdf -param robot_description -model robot $(arg robot_spawn_loc)" respawn="false" output="screen" />
 
     <!-- Custom laser launch scripts -->
     <group if="$(optenv VECTOR_HAS_SECOND_2D_LASER false)">
